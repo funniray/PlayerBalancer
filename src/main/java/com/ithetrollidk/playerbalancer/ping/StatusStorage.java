@@ -5,12 +5,15 @@ import com.ithetrollidk.playerbalancer.server.BungeeServer;
 import com.ithetrollidk.playerbalancer.server.ServerGroupStorage;
 import com.ithetrollidk.playerbalancer.server.ServerStorage;
 import dev.waterdog.waterdogpe.ProxyServer;
+import dev.waterdog.waterdogpe.network.serverinfo.BedrockServerInfo;
 import dev.waterdog.waterdogpe.network.serverinfo.ServerInfo;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import org.cloudburstmc.protocol.bedrock.BedrockPong;
 
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public class StatusStorage {
@@ -51,58 +54,13 @@ public class StatusStorage {
     public void ping(ServerInfo server, Callback<ServerStatus> callback) {
         if (server == null) return;
 
-        ProxyServer.getInstance().getScheduler().scheduleAsync(() -> server.ping(1000, TimeUnit.MILLISECONDS).whenComplete(((rakNetPong, throwable) -> {
-            if (rakNetPong == null) {
-                callback.done(null, throwable);
-
-                return;
+        ProxyServer.getInstance().getScheduler().scheduleAsync(() -> {
+            try {
+                BedrockPong rakNetPong = ((BedrockServerInfo) server).ping(1000, TimeUnit.MILLISECONDS).get();
+                callback.done(new ServerStatus(rakNetPong.playerCount(), rakNetPong.maximumPlayerCount()), null);
+            } catch (InterruptedException | ExecutionException e) {
+                callback.done(null, e);
             }
-
-            byte[] bytes = rakNetPong.getUserData();
-
-            byte[] in = new byte[readVarInt(Unpooled.wrappedBuffer(bytes))];
-
-            read(in, in.length, bytes);
-
-            String[] data = new String(in).split(";");
-
-            callback.done(new ServerStatus(Integer.parseInt(data[4]), Integer.parseInt(data[5])), throwable);
-        })));
-    }
-
-    /**
-     * Code by https://github.com/jamezrin/PlayerBalancer
-     */
-    private static void read(byte[] in, int len, byte[] bytes) {
-        int n = 0;
-
-        ByteArrayInputStream out = new ByteArrayInputStream(bytes);
-
-        while (n < len) {
-            int count = out.read(in, n, len - n);
-
-            if (count < 0)
-                try {
-                    throw new EOFException();
-                } catch (EOFException e) {
-                    e.printStackTrace();
-                }
-
-            n += count;
-        }
-    }
-
-    private static int readVarInt(ByteBuf in) {
-        int i = 0;
-        int j = 0;
-
-        while (true) {
-            int k = in.readByte();
-            i |= (k & 0x7F) << j++ * 7;
-            if (j > 5) throw new RuntimeException("VarInt too big");
-            if ((k & 0x80) != 128) break;
-        }
-
-        return i;
+        });
     }
 }

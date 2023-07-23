@@ -6,17 +6,17 @@ import com.ithetrollidk.playerbalancer.server.ServerGroupStorage;
 import com.ithetrollidk.playerbalancer.server.ServerStorage;
 import dev.waterdog.waterdogpe.ProxyServer;
 import dev.waterdog.waterdogpe.event.Event;
-import dev.waterdog.waterdogpe.event.defaults.PreTransferEvent;
+import dev.waterdog.waterdogpe.event.defaults.ServerTransferRequestEvent;
 import dev.waterdog.waterdogpe.network.serverinfo.ServerInfo;
 import dev.waterdog.waterdogpe.player.ProxiedPlayer;
 
 public class PreTransferListener extends Event {
 
     public PreTransferListener() {
-        ProxyServer.getInstance().getEventManager().subscribe(PreTransferEvent.class, this::onPreTransferEvent);
+        ProxyServer.getInstance().getEventManager().subscribe(ServerTransferRequestEvent.class, this::onPreTransferEvent);
     }
 
-    public void onPreTransferEvent(PreTransferEvent ev) {
+    public void onPreTransferEvent(ServerTransferRequestEvent  ev) {
         ProxiedPlayer player = ev.getPlayer();
 
         if (player.hasPermission("playerbalancer.bypass")) return;
